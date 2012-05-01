@@ -86,6 +86,7 @@ struct zzip_dirent
     int	 	d_compr;	/* compression method */
     int         d_csize;        /* compressed size */
     int	 	st_size;	/* file size / decompressed size */
+    zzip_byte_t z_flags[2];  /* general purpose bit flag */
     char * 	d_name;		/* file name / strdupped name */
 };
 
@@ -254,6 +255,9 @@ ZZIP_DIR *  zzip_dir_open_ext_io(zzip_char_t* filename,
 				 zzip_strings_t* ext, zzip_plugin_io_t io);
 
 /* zzip_file_open_ext_io => zzip_dir_open_ext_io + zzip_file_open */
+
+_zzip_export
+void zzip_set_password(ZZIP_DIR * dir, const char *password);
 
 #ifdef __cplusplus
 };

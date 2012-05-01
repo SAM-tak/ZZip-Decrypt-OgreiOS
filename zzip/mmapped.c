@@ -225,7 +225,7 @@ _zzip_strndup(char *p, size_t maxlen)
 {
     if (! p)
         return 0;
-    ___ zzip_byte_t *r = malloc(maxlen + 1);
+    ___ char *r = malloc(maxlen + 1);
     if (! r)
         return r;
     strncpy(r, p, maxlen);

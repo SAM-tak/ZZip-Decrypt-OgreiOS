@@ -399,7 +399,7 @@ __zzip_parse_root_directory(int fd,
                             struct zzip_dir_hdr **hdr_return,
                             zzip_plugin_io_t io)
 {
-    auto struct zzip_disk_entry dirent;
+    /*auto*/ struct zzip_disk_entry dirent;
     struct zzip_dir_hdr *hdr;
     struct zzip_dir_hdr *hdr0;
     uint16_t *p_reclen = 0;
@@ -441,7 +441,7 @@ __zzip_parse_root_directory(int fd,
 
     for (entries=0, zz_offset=0; ; entries++)
     {
-        register struct zzip_disk_entry *d;
+        /*register*/ struct zzip_disk_entry *d;
         uint16_t u_extras, u_comment, u_namlen;
 
 #     ifndef ZZIP_ALLOW_MODULO_ENTRIES
@@ -500,6 +500,7 @@ __zzip_parse_root_directory(int fd,
         hdr->d_crc32 = zzip_disk_entry_get_crc32(d);
         hdr->d_csize = zzip_disk_entry_get_csize(d);
         hdr->d_usize = zzip_disk_entry_get_usize(d);
+        memcpy(hdr->d_flags, d->z_flags, sizeof(hdr->d_flags));
         hdr->d_off = zzip_disk_entry_get_offset(d);
         hdr->d_compr = zzip_disk_entry_get_compr(d);
         if (hdr->d_compr > _255)

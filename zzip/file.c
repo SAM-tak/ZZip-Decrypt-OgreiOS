@@ -168,6 +168,8 @@ dirsep_strcasecmp(zzip_char_t * s1, zzip_char_t * s2)
 
 static int zzip_inflate_init(ZZIP_FILE *, struct zzip_dir_hdr *);
 
+#include "crypt.h"
+
 /**
  * open an => ZZIP_FILE from an already open => ZZIP_DIR handle. Since
  * we have a chance to reuse a cached => buf32k and => ZZIP_FILE memchunk
@@ -287,12 +289,30 @@ zzip_file_open(ZZIP_DIR * dir, zzip_char_t * name, int o_mode)
                 fp->dataoffset = dir->io->fd.tells(dir->fd);
                 fp->usize = hdr->d_usize;
                 fp->csize = hdr->d_csize;
+                memcpy(fp->z_flags, p->z_flags, sizeof(fp->z_flags));
+            }
+            
+            //if (zzip_file_header_data_encrypted(fp)) {
+            if (fp->z_flags[0]&1) {
+                if (fp->dir->pcrc_32_tab) {
+                    int i;
+                    char source[12];
+                    
+                    fp->pcrc_32_tab = fp->dir->pcrc_32_tab;
+                    memcpy(fp->keys, fp->dir->keys, sizeof(fp->keys));
+                    
+                    if(dir->io->fd.read(dir->fd, (void *)source, 12) < 12) {
+                        err = ZZIP_CORRUPTED;
+                        goto error;
+                    }
+                    for (i = 0; i<12; i++)
+                        zdecode(fp->keys,fp->pcrc_32_tab,source[i]);
+                }
             }
 
             err = zzip_inflate_init(fp, hdr);
             if (err)
                 goto error;
-
             return fp;
         } else
         {
@@ -331,6 +351,12 @@ zzip_inflate_init(ZZIP_FILE * fp, struct zzip_dir_hdr *hdr)
             goto error;
 
         fp->crestlen = hdr->d_csize;
+        //if (zzip_file_header_data_encrypted(fp)) {
+        if (fp->z_flags[0]&1) {
+            if (fp->pcrc_32_tab) {
+                fp->crestlen -= 12;
+            }
+        }
     }
     return 0;
   error:
@@ -432,6 +458,20 @@ zzip_file_read(ZZIP_FILE * fp, void *buf, zzip_size_t len)
                     /* or ZZIP_DIR_READ_EOF ? */
                     return -1;
                 }
+                //if (zzip_file_header_data_encrypted(fp)) {
+                if (fp->z_flags[0]&1) {
+                    if (fp->pcrc_32_tab) {
+                        int j;
+                        for(j = 0; j < i; j++) {
+                            ((unsigned char *)fp->buf32k)[j] = zdecode(fp->keys,fp->pcrc_32_tab,
+                                    ((unsigned char *)fp->buf32k)[j]);
+                        }
+                    }
+                    else {
+                        dir->errcode = ZZIP_UNDEF;
+                        return -1;
+                    }
+                }
                 fp->crestlen -= i;
                 fp->d_stream.avail_in = i;
                 fp->d_stream.next_in = (unsigned char *) fp->buf32k;
@@ -453,8 +493,22 @@ zzip_file_read(ZZIP_FILE * fp, void *buf, zzip_size_t len)
     } else
     {                           /* method == 0 -- unstore */
         rv = fp->io->fd.read(dir->fd, buf, l);
-        if (rv > 0)
-            { fp->restlen-= rv; }
+        if (rv > 0) {
+            if (fp->z_flags[0]&1) {
+                if (fp->pcrc_32_tab) {
+                    int j;
+                    for(j = 0; j < rv; j++) {
+                        ((unsigned char *)buf)[j] = zdecode(fp->keys,fp->pcrc_32_tab,
+                                                                   ((unsigned char *)buf)[j]);
+                    }
+                }
+                else {
+                    dir->errcode = ZZIP_UNSUPP_COMPR;
+                    return -1;
+                }
+            }
+            fp->restlen-= rv;
+        }
         else if (rv < 0)
             { dir->errcode = ZZIP_DIR_READ; }
         return rv;
@@ -953,6 +1007,22 @@ zzip_rewind(ZZIP_FILE * fp)
     /* seek to beginning of this file */
     if (fp->io->fd.seeks(dir->fd, fp->dataoffset, SEEK_SET) < 0)
         return -1;
+    if (fp->z_flags[0]&1) {
+        if (fp->dir->pcrc_32_tab) {
+            int i;
+            char source[12];
+            
+            fp->pcrc_32_tab = fp->dir->pcrc_32_tab;
+            memcpy(fp->keys, fp->dir->keys, sizeof(fp->keys));
+            
+            if(dir->io->fd.read(dir->fd, (void *)source, 12) < 12) {
+                err = ZZIP_CORRUPTED;
+                goto error;
+            }
+            for (i = 0; i<12; i++)
+                zdecode(fp->keys,fp->pcrc_32_tab,source[i]);
+        }
+    }
 
     /* reset the inflate init stuff */
     fp->restlen = fp->usize;
@@ -967,6 +1037,11 @@ zzip_rewind(ZZIP_FILE * fp)
         /* start over at next inflate with a fresh read() */
         fp->d_stream.avail_in = 0;
         fp->crestlen = fp->csize;
+        if (fp->z_flags[0]&1) {
+            if (fp->pcrc_32_tab) {
+                fp->crestlen -= 12;
+            }
+        }
     }
 
     return 0;
@@ -1168,6 +1243,13 @@ zzip_seek32(ZZIP_FILE * fp, long offset, int whence)
         }
         return -1;
     }
+}
+
+void
+zzip_set_password(ZZIP_DIR * dir, const char *password)
+{
+    dir->pcrc_32_tab = get_crc_table();
+    init_keys(password,dir->keys,dir->pcrc_32_tab);
 }
 
 /*

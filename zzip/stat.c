@@ -78,6 +78,7 @@ zzip_dir_stat(ZZIP_DIR * dir, zzip_char_t * name, ZZIP_STAT * zs, int flags)
     zs->d_csize = hdr->d_csize;
     zs->st_size = hdr->d_usize;
     zs->d_name = hdr->d_name;
+    memcpy(zs->z_flags, hdr->d_flags, sizeof(zs->z_flags));
 
     return 0;
 }
@@ -97,6 +98,7 @@ zzip_file_stat(ZZIP_FILE * file, ZZIP_STAT * zs)
     zs->d_csize = file->csize;
     zs->st_size = file->usize;
     zs->d_name = 0;
+    memcpy(zs->z_flags, file->z_flags, sizeof(zs->z_flags));
     return 0;
 }
 

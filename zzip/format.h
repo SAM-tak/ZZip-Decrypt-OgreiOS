@@ -198,7 +198,7 @@ struct zzip_disk64_trailer
 } ZZIP_GNUC_PACKED;
 #define zzip_disk64_trailer_headerlength (4+8+2+2+4+4+8+8+8+8)
 
-/* z_flags */
+/* z_flags */ /* theese are cannot work */
 #define ZZIP_IS_ENCRYPTED(p)    ((*(zzip_byte_t*)p)&1)
 #define ZZIP_IS_COMPRLEVEL(p)  (((*(zzip_byte_t*)p)>>1)&3)
 #define ZZIP_IS_STREAMED(p)    (((*(zzip_byte_t*)p)>>3)&1)

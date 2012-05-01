@@ -69,12 +69,15 @@ struct zzip_file
     zzip_size_t crestlen;
     zzip_size_t usize;
     zzip_size_t csize;
+    zzip_byte_t z_flags[2];  /* general purpose bit flag */
     /* added dataoffset member - data offset from start of zipfile*/
     zzip_off_t dataoffset;
     char* buf32k;
     zzip_off_t offset; /* offset from the start of zipfile... */
     z_stream d_stream;
     zzip_plugin_io_t io;
+    unsigned long keys[3];     /* keys defining the pseudo-random sequence */
+    const unsigned long* pcrc_32_tab; /* if it is null, keys are invalid */
 };
 
 #endif /* _ZZIP_FILE_H */

@@ -39,6 +39,7 @@ struct zzip_dir_hdr
     uint16_t    d_reclen;       /* next dir_hdr structure offset */
     uint16_t    d_namlen;       /* explicit namelen of d_name */
     uint8_t     d_compr;        /* the compression type, 0 = store, 8 = inflate */
+    uint8_t     d_flags[2];     /* general purpose bit flag */
     char        d_name[1];      /* the actual name of the entry, may contain DIRSEPs */
 };
 #define _ZZIP_DIRENT_HAVE_D_NAMLEN
@@ -66,6 +67,8 @@ struct zzip_dir
     char*  realname;
     zzip_strings_t* fileext;      /* list of fileext to test for */
     zzip_plugin_io_t io;          /* vtable for io routines */
+    unsigned long keys[3];     /* keys defining the pseudo-random sequence */
+    const unsigned long* pcrc_32_tab; /* if it is null, keys are invalid */
 }; 
 
 #define ZZIP_32K 32768
