@@ -45,7 +45,7 @@ main (int argc, char ** argv)
 
     if (argc <= 1)
     {
-        printf (usage);
+        printf ("%s", usage);
         exit(0);
     }
 
